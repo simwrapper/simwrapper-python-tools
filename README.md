@@ -1,22 +1,22 @@
 # simwrapper-python-tools
 
-Official python library for working with SimWrapper
+Official python library for working with SimWrapper.
 
-SimWrapper is...
+[SimWrapper](https://simwrapper.github.io) is a data visualization tool for exploring large transport simulation results.
 
 ## About this library
 
-We are at the very early stages of building this library. The API will change, things will break, and there are certainly bugs. You probably shouldn't use this for anything.
+This library contains the "simwrapper" command-line tool, which allows browsing of local files on your PC/laptop using SimWrapper.
 
-- Our primary goal is to make MATSim play nice with **pandas** and **geopandas**, for data analysis workflows.
+We are at the very early stages of building this tool. The API will change, things will break, and there are certainly bugs.
+
+- Our primary goal is to make it easy to get local simulation results viewable using the SimWrapper website.
 - We have only tested this using Anaconda Python. Only Python 3.x is supported.
-- Currently MATSim network, event, and plans files are supported. Hopefully more will be coming soon.
-- For Geopandas network support, you also need to install `geopandas` and `shapely`.
-- Supports JSON and Protobuf event file formats
-- Can write MATSim files too!
 
 ## Quickstart
 
-1. Install using `pip install matsim-tools`
+1. Install once, using `pip install simwrapper`
 
-2. In lieu of real documentation, here is some sample code to get you started. Good luck!
+2. `cd` into your data folder, then run `simwrapper serve` to enable the local file server
+
+3. Browse to either <https://vsp.berlin/simwrapper> or <https://activitysim.github.io/dashboard> to view your local folder outputs.
