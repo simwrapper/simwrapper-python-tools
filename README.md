@@ -13,10 +13,16 @@ We are at the very early stages of building this tool. The API will change, thin
 - Our primary goal is to make it easy to get local simulation results viewable using the SimWrapper website.
 - We have only tested this using Anaconda Python. Only Python 3.x is supported.
 
-## Quickstart
+## Installation
 
-1. Install once, using `pip install simwrapper`
+Install once, using `pip install simwrapper`
 
-2. `cd` into your data folder, then run `simwrapper serve` to enable the local file server
+## Usage
 
-3. Browse to either <https://vsp.berlin/simwrapper> or <https://activitysim.github.io/dashboard> to view your local folder outputs.
+`simwrapper` knows two commands:
+
+- `simwrapper serve` starts a local file server in the current directory. Run this command, then browse to either <https://vsp.berlin/simwrapper> or <https://activitysim.github.io/dashboard> to view your local folder outputs.
+
+- `simwrapper open [vsp|asim]` opens a new web browser tab AND a local file server in the current directory. The site will only operate as long as you keep that local server running, so don't close the command window.
+  - For the ActivitySim site, use `simwrapper open asim`
+  - For the VSP MATSim site, use `simwrapper open vsp`
