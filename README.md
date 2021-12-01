@@ -1,4 +1,4 @@
-# simwrapper-python-tools
+# SimWrapper Python Tools
 
 Official python library for working with SimWrapper.
 
@@ -6,7 +6,7 @@ Official python library for working with SimWrapper.
 
 ## About this library
 
-This library contains the "simwrapper" command-line tool, which allows browsing of local files on your PC/laptop using SimWrapper.
+This library contains the "simwrapper" command-line tool, which allows browsing of local files on your PC/laptop using the SimWrapper website.
 
 We are at the very early stages of building this tool. The API will change, things will break, and there are certainly bugs.
 
