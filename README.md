@@ -26,17 +26,24 @@ Installation requires the `pip` package manager.
 
 `simwrapper` knows three commands.
 
-- `simwrapper serve` starts a local file server in the current directory. Run this command, then browse to either <https://vsp.berlin/simwrapper> or <https://activitysim.github.io/dashboard> to view your local folder outputs.
+**simwrapper serve**
 
-- `simwrapper here` starts a _local copy of the SimWrapper website_ listening on port 9039. Run this command instead of `simwrapper serve` if you have a machine on your local network which contains outputs you'd like to view (such as a modeling server), and that machine has not been set up with any other file sharing software such as NGINX or Apache.
+starts a local file server in the current directory. Run this command, then browse to either <https://vsp.berlin/simwrapper> or <https://activitysim.github.io/dashboard> to view your local folder outputs.
+
+**simwrapper here**
+
+starts a _local copy of the SimWrapper website_ listening on port 9039. Run this command instead of `simwrapper serve` if you have a machine on your local network which contains outputs you'd like to view (such as a modeling server), and that machine has not been set up with any other file sharing software such as NGINX or Apache.
 
 - This command is designed to support the use case where an agency has (1) a local network with files stored on a central "modeling server" or file server, and also (2) desktop machines or laptops on the local network that wish to access those files using SimWrapper.
 - Note, it's not a battle-tested multi-threaded web proxy server such as Apache, NGINX, or Gunicorn. Ultimately you may decide that you want to put simwrapper behind a proxy server such as those listed, for improved performance, features, and security.
 
-- `simwrapper open [vsp|asim]` opens a new web browser tab AND a local file server in the current directory. The site will only operate as long as you keep that local server running, so don't close the command window.
-  - To open on the VSP MATSim site on the web, use `simwrapper open vsp`
-  - To open on the ActivitySim website, use `simwrapper open asim`
-  - You can also run `simwrapper open` without specifying an external site. In this case, it will will serve everything from the localhost, including file contents and SimWrapper code itself. This is the same as `simwrapper here` except it also opens a browser tab.
+**simwrapper open [vsp|asim]**
+
+opens a new web browser tab AND a local file server in the current directory. The site will only operate as long as you keep that local server running, so don't close the command window.
+
+- To open on the VSP MATSim site on the web, use `simwrapper open vsp`
+- To open on the ActivitySim website, use `simwrapper open asim`
+- You can also run `simwrapper open` without specifying an external site. In this case, it will will serve everything from the localhost, including file contents and SimWrapper code itself. This is the same as `simwrapper here` except it also opens a browser tab.
 
 All three simwrapper commands start a small local file server, listening on a local port number. The site will only operate as long as you keep that local server running: quitting the command with CTRL-C or closing the command window will shut down the server.
 
@@ -46,7 +53,7 @@ When `simwrapper` is running, it listens for connections on your network interfa
 
 By default, almost all computers now run firewalls which block external access. If you want the files in your simwrapper folder to be available on your network, you will need to grant firewall permissions, generally meaning you need to authorize incoming network connections for the Python executable, and on the specific port used by SimWrapper.
 
-- SimWrapper usually runs on ports 8000 and 9039.
+- SimWrapper usually runs on ports 8000 and 9039. Starting multiple copies will increment the port numbers by one each time.
 
 ## Running as HTTPS - required for Safari
 
