@@ -22,6 +22,10 @@ Installation requires the `pip` package manager.
 - Install using `pip install simwrapper`
 - To upgrade to the latest version, `pip install --upgrade simwrapper`
 
+This package includes an embedded copy of the Javascript code from the SimWrapper javascript
+project, available separately at https://github.com/simwrapper/simwrapper. That code is under the
+identical GNU GPL V3 and is embedded here with explicit permission of the author.
+
 ## Usage
 
 `simwrapper` knows three commands.
