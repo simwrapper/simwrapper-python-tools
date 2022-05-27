@@ -93,10 +93,15 @@ The python `simwrapper` tool contains a fully-built static copy of the SimWrappe
 
 Here are the basic steps to do that:
 
-- Make any changes to the [SimWrapper javascript code](https://github.com/simwrapper/simwrapper) as needed, and run `npm run build` to compile everything into the `dist` folder in that project.
+- In the SimWrapper javascript project repo:
+  - Make any changes to the [SimWrapper javascript code](https://github.com/simwrapper/simwrapper) as needed, and test vigorously
+  - Ensure that both `vite.config.js` and `public/404.html` are both set to have prefix "/" instead of "/simwrapper/" or "/dashboard/". The Python tool will not work if there is a URL prefix in the path.
+  - Run `npm run build` to compile everything into the `dist` folder.
+
 - Then in this Python repository:
   - Delete all files in the `simwrapper/static` folder
-  - Copy entire contents from the SimWrapper `dist` folder to the `simwrapper/static` folder here
+  - Delete all files in the `build` folder
+  - Copy entire contents from the SimWrapper `dist` folder (above) to the `simwrapper/static` folder here
   - Make any needed changes to the Python code in the `simwrapper` folder here
   - Run `make build` to generate the Python code
 
@@ -104,7 +109,23 @@ Now you can test your changes locally by running `pip install .` from the root f
 
 If everything is running smoothly, then push the project to pip and conda:
 
-- Check in all your changes: use semantic versioning numbers
+### Updating pip
+
+- Commit all your changes: use semantic versioning commit messages ("fix: blah" and "feat: blah")
 - Bump the version number with `make version`
-- Push to pip with `make push`
-- Conda will build automatically if the pip build/push is successful.
+- Commit the version bump, and push changes to Github
+- Push to PyPi (pip) with `make push`
+- Take note of the SHA256 string for the new `version.tar.gz` at https://pypi.org/project/simwrapper
+  which can be found on the "Download Files" page 
+
+### Updating conda
+
+- Modify the conda "feedstock" fork at https://github.com/simwrapper/simwrapper-feedstock :
+  - Edit `recipe/meta.yaml`: you probably just need to change the version string and the SHA256
+  - The SHA256 is found on https://pypi.org/project/simwrapper on the Download Files page
+- Push to Github
+- Create a pull request on https://github.com/conda-forge/simwrapper-feedstock
+  - Make notes in the PR description, checking off the relevant boxes. 
+  - You don't need to do a "rerender" unless you've changed Python versions (I think)
+
+
