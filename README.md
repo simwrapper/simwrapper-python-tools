@@ -22,7 +22,7 @@ Installation requires the `pip` package manager.
 - Install using `pip install simwrapper`
 - To upgrade to the latest version, `pip install --upgrade simwrapper`
 
-This package includes an embedded copy of the Javascript code from the SimWrapper javascript
+This package includes an embedded copy of the Javascript code from the SimWrapper
 project, available separately at https://github.com/simwrapper/simwrapper. That code is under the
 identical GNU GPL V3 and is embedded here with explicit permission of the author.
 
@@ -36,7 +36,7 @@ starts a local file server in the current directory. Run this command, then brow
 
 **simwrapper here**
 
-starts a _local copy of the SimWrapper website_ listening on port 9039. Run this command instead of `simwrapper serve` if you have a machine on your local network which contains outputs you'd like to view (such as a modeling server), and that machine has not been set up with any other file sharing software such as NGINX or Apache.
+starts a _local copy of the SimWrapper website_ usually listening on port 8050. Run this command instead of `simwrapper serve` if you have a machine on your local network which contains outputs you'd like to view (such as a modeling server), and that machine has not been set up with any other file sharing software such as NGINX or Apache.
 
 - This command is designed to support the use case where an agency has (1) a local network with files stored on a central "modeling server" or file server, and also (2) desktop machines or laptops on the local network that wish to access those files using SimWrapper.
 - Note, it's not a battle-tested multi-threaded web proxy server such as Apache, NGINX, or Gunicorn. Ultimately you may decide that you want to put simwrapper behind a proxy server such as those listed, for improved performance, features, and security.
@@ -57,7 +57,7 @@ When `simwrapper` is running, it listens for connections on your network interfa
 
 By default, almost all computers now run firewalls which block external access. If you want the files in your simwrapper folder to be available on your network, you will need to grant firewall permissions, generally meaning you need to authorize incoming network connections for the Python executable, and on the specific port used by SimWrapper.
 
-- SimWrapper usually runs on ports 8000 and 9039. Starting multiple copies will increment the port numbers by one each time.
+- SimWrapper usually runs on ports 8000 and 8050. Starting multiple copies will increment the port numbers by one each time.
 
 ## Running as HTTPS - required for Safari
 
@@ -86,3 +86,25 @@ Now you can run simwrapper as follows:
 SimWrapper is open source software with no guarantees, and is provided under the GNU GPL v3 license. You can post questions, bugs, or updates on the SimWrapper Github issue list, here: <http://github.com/simwrapper/simwrapper/issues>.
 
 Have fun!
+
+## Developing the SimWrapper Python tool
+
+The python `simwrapper` tool contains a fully-built static copy of the SimWrapper website in the `simwrapper/static` folder. Whenever you make changes to the SimWrapper website, you'll need to package up the changes, copy them into this Python project, and build the Python package.
+
+Here are the basic steps to do that:
+
+- Make any changes to the [SimWrapper javascript code](https://github.com/simwrapper/simwrapper) as needed, and run `npm run build` to compile everything into the `dist` folder in that project.
+- Then in this Python repository:
+  - Delete all files in the `simwrapper/static` folder
+  - Copy entire contents from the SimWrapper `dist` folder to the `simwrapper/static` folder here
+  - Make any needed changes to the Python code in the `simwrapper` folder here
+  - Run `make build` to generate the Python code
+
+Now you can test your changes locally by running `pip install .` from the root folder of this project. You probably want to be inside a python environment if you want to isolate your changes during testing.
+
+If everything is running smoothly, then push the project to pip and conda:
+
+- Check in all your changes: use semantic versioning numbers
+- Bump the version number with `make version`
+- Push to pip with `make push`
+- Conda will build automatically if the pip build/push is successful.
