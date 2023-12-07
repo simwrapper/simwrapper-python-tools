@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-import os,sys
+import os,sys,tempfile,random
 
 import sqlite3
 from sqlite3 import Error
+from hashlib import sha1
 
 from flask import Flask, request
 from flask_restful import Resource, Api, reqparse
-
-database = 'database.sqlite3'
-blobfolder = './blobs/'
+from flask_uploads import UploadSet, configure_uploads, ALL
 
 # database = ':memory:'
+database = 'database.sqlite3'
+blobfolder = './blobs/'
 
 # Valid API_KEYS is "abcde, 12345, 1f2e3cd"
 try:
@@ -19,19 +20,24 @@ except:
     print("no valid API_KEYS in environment")
     sys.exit(1)
 
-print(valid_api_keys)
-
 app = Flask(__name__)
 api = Api(app)
 
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024 # 50Mb
+
+# Set up Flask Uploads ----------------------------------------------
+app.config['MAX_CONTENT_LENGTH'] = 250 * 1024 * 1024 # 250Mb
+app.config["UPLOADED_FILES_DEST"] = blobfolder
+files = UploadSet("files", ALL)
+configure_uploads(app, files)
+
 
 ### SQL HELPERS ------------------------------------------------------------
-
-JOB_COLUMNS = ['id','name','active','owner','status','begin_date','end_date','tags','qsub','launcher']
+JOB_COLUMNS = ['id','owner','status','start_date','end_date','qsub','launcher']
+FILE_COLUMNS = ['id', 'name', 'hash','file_type', 'sizeof', 'modified_date', 'job_id']
+JOB_STATUS = ['Not started', 'Queued', 'Preparing', 'Running', 'Complete', 'Cancelled', 'Error']
 
 def sql_create_connection(filename):
-    """ create a database connection to a database that resides in memory
+    """ create a database connection to a database
     """
     conn = None;
     try:
@@ -57,22 +63,22 @@ def sql_create_clean_database(database):
 
     sql_create_jobs_table = """CREATE TABLE IF NOT EXISTS jobs (
                                         id INTEGER PRIMARY KEY,
-                                        name TEXT NOT NULL,
-                                        active INTEGER,
                                         owner TEXT,
-                                        status TEXT,
-                                        begin_date TEXT,
+                                        status INTEGER,
+                                        start_date TEXT,
                                         end_date TEXT,
-                                        tags TEXT,
                                         qsub TEXT,
                                         launcher TEXT
                             ); """
 
     sql_create_files_table = """CREATE TABLE IF NOT EXISTS files (
-                                    sha256 TEXT PRIMARY KEY,
+                                    id INTEGER PRIMARY KEY,
                                     name TEXT NOT NULL,
-                                    begin_date TEXT,
-                                    job_id INTEGER,
+                                    hash TEXT NOT NULL,
+                                    file_type TEXT,
+                                    size_of INTEGER,
+                                    modified_date TEXT,
+                                    job_id INTEGER NOT NULL,
                                     FOREIGN KEY (job_id) REFERENCES jobs(id)
                                 );"""
 
@@ -90,30 +96,90 @@ def sql_select_jobs_by_active(conn, active):
     # cur.execute("SELECT * FROM jobs WHERE active=?", (active,))
     cur.execute("SELECT * FROM jobs")
     rows = cur.fetchall()
-
     answerDict = []
     for row in rows:
         json = dict(map(lambda i,j : (i,j), JOB_COLUMNS, row))
         print(json)
         answerDict.append(json)
-
     return answerDict
 
-def sql_insert_job(conn, job):
-    sql = ''' INSERT INTO jobs(name, active)
-              VALUES(:name, :active) '''
+def sql_insert_job(queryDict):
+    conn = sql_create_connection(database)
+    with conn:
+        # generate keys/values from dict
+        columns = ', '.join(queryDict.keys())
+        placeholders = ':'+', :'.join(queryDict.keys())
+        sql = 'INSERT INTO jobs(%s) VALUES(%s)' % (columns, placeholders)
 
-    cur = conn.cursor()
-    cur.execute(sql, job)
-    conn.commit()
-    print(cur.lastrowid)
-    return cur.lastrowid
+        cur = conn.cursor()
+        cur.execute(sql, queryDict)
+        conn.commit()
+
+        print(cur.lastrowid)
+        return cur.lastrowid
+
+def sql_update_job(job_id, queryDict):
+    conn = sql_create_connection(database)
+    with conn:
+        # generate keys/values from dict
+        vars = [f"{x}=:{x}" for x in queryDict.keys()]
+        joined = ", ".join(vars)
+        sql = 'UPDATE jobs SET ' + joined + ' WHERE id = ' + job_id
+
+        print(sql)
+
+        cur = conn.cursor()
+        cur.execute(sql, queryDict)
+        conn.commit()
+
+        print(cur.lastrowid)
+        return cur.lastrowid
+    return "nope", 500
+
+def sql_insert_file(queryDict):
+    conn = sql_create_connection(database)
+    with conn:
+        # generate keys/values from dict
+        columns = ', '.join(queryDict.keys())
+        placeholders = ':'+', :'.join(queryDict.keys())
+
+        sql = 'INSERT INTO files (%s) VALUES (%s)' % (columns, placeholders)
+        cur = conn.cursor()
+        cur.execute(sql, queryDict)
+        conn.commit()
+        print(cur.lastrowid)
+        return cur.lastrowid
+    return "Could not add file", 500
+
+def sql_select_files_by_hash(hash):
+    conn = sql_create_connection(database)
+    with conn:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM files")
+        rows = cur.fetchall()
+        answerDict = []
+        for row in rows:
+            json = dict(map(lambda i,j : (i,j), FILE_COLUMNS, row))
+            print(json)
+            answerDict.append(json)
+        return answerDict
 
 ### END SQL HELPERS ------------------------------------------------------------
 
+def getHash(filename):
+    BUF_SIZE = 65536
+    sha = sha1()
+    with open(filename, 'rb') as f:
+        while True:
+            data = f.read(BUF_SIZE)
+            if not data:
+                break
+            sha.update(data)
+        sha.update(data)
+    return sha.hexdigest()
+
 def is_valid_api_key():
     return True
-
     # apikey = request.headers.get('Authorization')
     # if apikey in valid_api_keys:
     #     return True
@@ -134,13 +200,38 @@ class FilesList(Resource):
         if not is_valid_api_key(): return "Invalid API Key", 403
         conn = sql_create_connection(database)
         with conn:
-            return []
+            return sql_select_files_by_hash('')
 
     def post(self):
         if not is_valid_api_key(): return "Invalid API Key", 403
-        print("### FILES", request.files.keys())
-        return 1, 201
 
+        print("### FILES", request.files)
+        print("### FORM", request.form)
+
+        if "file" in request.files:
+            myFile = request.files["file"]
+            if myFile:
+                try:
+                    user_filename = '' + myFile.filename
+                    tmpFile = "temp{}".format(random.randint(0,1e12))
+                    myFile.filename = tmpFile
+                    filename = files.save(myFile)
+                    tmpFullPath = os.path.join(blobfolder, tmpFile)
+                    fileSize = os.path.getsize(tmpFullPath)
+                    hashx = getHash(tmpFullPath)
+                    os.rename(tmpFullPath, os.path.join(blobfolder,hashx))
+                    insertedRow = sql_insert_file({
+                        "name": user_filename,
+                        "hash": hashx,
+                        "size_of": fileSize,
+                        "job_id": request.form.get("job_id")
+                    })
+                    return insertedRow, 201
+                except Error as e:
+                    print(e)
+
+
+        return "Failed, file not uploaded", 500
 
 class JobsList(Resource):
     def get(self):
@@ -151,26 +242,49 @@ class JobsList(Resource):
             active_jobs = sql_select_jobs_by_active(conn, 1) # active
             return active_jobs
 
+
     def post(self):
+        """ Create new empty unstarted job
+        """
         if not is_valid_api_key(): return "Invalid API Key", 403
 
-        parser.add_argument("name")
         parser.add_argument("owner")
         parser.add_argument("status")
-        parser.add_argument("begin_date")
+        parser.add_argument("start_date")
         parser.add_argument("end_date")
         parser.add_argument("qsub")
         parser.add_argument("launcher")
-
         job = parser.parse_args()
-        job['active'] = 1
-
+        job["status"] = 0
         print(job)
 
-        conn = sql_create_connection(database)
-        with conn:
-            result = sql_insert_job(conn, job)
-            return result, 201 # created
+        result = sql_insert_job(job)
+        return result, 201 # created
+
+class Job(Resource):
+    def get(self, job_id):
+        if not is_valid_api_key(): return "Invalid API Key", 403
+
+        print('HERERERERE #Q#$#%$@#%@')
+        if student_id not in STUDENTS:
+            return "Not found", 404
+        else:
+            return STUDENTS[student_id]
+
+    def put(self, job_id):
+        """ Update job - change status etc
+        """
+        if not is_valid_api_key(): return "Invalid API Key", 403
+        if not job_id.isnumeric(): return "Invaoid ID", 403
+
+        parser.add_argument("status")
+        args = parser.parse_args()
+
+        if args["status"] is not None:
+            result = sql_update_job(job_id, args)
+            return result, 200
+
+        return "no status in request", 500
 
 
 class Student(Resource):
@@ -210,8 +324,8 @@ class Student(Resource):
             return '', 204
 
 api.add_resource(FilesList, '/files/')
-api.add_resource(JobsList, '/jobs/')
-api.add_resource(Student, '/jobs/<job_id>')
+api.add_resource(JobsList,  '/jobs/')
+api.add_resource(Job,      '/jobs/<job_id>')
 
 def main():
     sql_create_clean_database(database)
