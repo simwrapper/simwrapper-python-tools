@@ -8,15 +8,15 @@ import ssl
 import urllib
 from pathlib import Path
 
+# Python3 ONLY: will now crash with Python 2.x
 try:
-    # Python3
     import http.server as SimpleHTTPServer
     from http.server import HTTPServer, SimpleHTTPRequestHandler, test
 
 except ImportError:
     # Python 2
-    from BaseHTTPServer import HTTPServer, test
-    from SimpleHTTPServer import SimpleHTTPRequestHandler
+    print('ERROR: Requires Python 3.6+')
+    sys.exit(1)
 
 
 current_dir = os.getcwd()
