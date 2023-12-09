@@ -388,7 +388,7 @@ api.add_resource(Job, '/jobs/<job_id>')
 
 def main():
     sql_create_clean_database(database)
-    app.run(debug=True)
+    app.run(port=4999, debug=True)
 
 if __name__ == "__main__":
     main()
