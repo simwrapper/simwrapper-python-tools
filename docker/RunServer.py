@@ -13,23 +13,34 @@ from flask_uploads import UploadSet, configure_uploads, ALL
 database = 'database.sqlite3'
 blobfolder = './blobs/'
 
-# Valid API_KEYS is "abcde, 12345, 1f2e3cd"
-try:
-    valid_api_keys = [key.strip() for key in os.environ['API_KEYS'].split(',')]
-except:
-    print("no valid API_KEYS in environment")
-    sys.exit(1)
+# Set up API keys
+authfile = 'auth-keys.csv'  # username,key
 
-app = Flask(__name__)
-api = Api(app)
+def setup_auth_keys(authfile):
+    lookup = {}
+    # keys from API_KEYS env variable
+    if 'API_KEYS' in os.environ:
+        env_api_keys = [key.strip() for key in os.environ['API_KEYS'].split(',')]
+        for key in env_api_keys:
+            split = key.split('-')
+            lookup[key] = len(split) > 1 and split[0] or 'user'
 
+    # keys from auth_keys.csv
+    with open(authfile,'r') as keys:
+        for line in keys:
+            line = line.strip()
+            if line.startswith('#'): continue
+            items = line.split(',')
+            if len(items) >= 2: lookup[items[1]] = items[0]
 
-# Set up Flask Uploads ----------------------------------------------
-app.config['MAX_CONTENT_LENGTH'] = 250 * 1024 * 1024 # 250Mb
-app.config["UPLOADED_FILES_DEST"] = blobfolder
-files = UploadSet("files", ALL)
-configure_uploads(app, files)
+    # No keys? Abort
+    if len(lookup.keys()) == 0:
+        raise Error("No valid API keys")
+        sys.exit(1)
 
+    print("\n*** SIMWRAPPER RUNSERVER")
+    print("*** Valid API users:", ", ".join(lookup.values()), '\n')
+    return lookup
 
 ### SQL HELPERS ------------------------------------------------------------
 JOB_COLUMNS = ['id','owner','status','start_date','end_date','qsub','launcher']
@@ -380,6 +391,19 @@ class Student(Resource):
         else:
             del STUDENTS[student_id]
             return '', 204
+
+# ---------- Set up Flask ---------
+
+auth_keys_lookup = setup_auth_keys(authfile)
+
+app = Flask(__name__)
+api = Api(app)
+
+# Set up Flask Uploads ----------------------------------------------
+app.config['MAX_CONTENT_LENGTH'] = 250 * 1024 * 1024 # 250Mb
+app.config["UPLOADED_FILES_DEST"] = blobfolder
+files = UploadSet("files", ALL)
+configure_uploads(app, files)
 
 api.add_resource(FilesList, '/files/')
 api.add_resource(File, '/files/<file_id>')

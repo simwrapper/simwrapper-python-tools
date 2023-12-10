@@ -1,25 +1,24 @@
 FROM nginx:alpine
 
-WORKDIR /app
-COPY . /app
-
-# nginx config
+# nginx -----------------------------------------------------------
 RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d/
-COPY htpasswd /etc/nginx/htpasswd
+#COPY htpasswd /etc/nginx/htpasswd
+EXPOSE 80
 
-# python
+# python ----------------------------------------------------------
 ENV PYTHONUNBUFFERED=1
 RUN apk add --update --no-cache python3 py3-pip && ln -sf python3 /usr/bin/python
 RUN pip3 install --no-cache --upgrade pip setuptools
 
-# Flask/Gunicorn
+# Flask/Gunicorn --------------------------------------------------
 RUN pip3 install --no-cache gunicorn flask flask-restful flask-reuploaded
+WORKDIR /app
+COPY . /app
 
-# Supervisor
+# Supervisor (multi-process docker) -------------------------------
 RUN apk add supervisor
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY supervisord.conf /etc/supervisor/conf.d/
 
-EXPOSE 80
-
+# Supervisor config runs both nginx and gunicorn/flask: -----------
 CMD /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
