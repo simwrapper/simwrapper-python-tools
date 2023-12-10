@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import os,sys,tempfile,random
+import os,sys,tempfile,random,shutil
+from os.path import exists
 
 import sqlite3
 from sqlite3 import Error
@@ -10,8 +11,9 @@ from flask_restful import Resource, Api, reqparse
 from flask_uploads import UploadSet, configure_uploads, ALL
 
 # database = ':memory:'
-database = 'database.sqlite3'
-blobfolder = './blobs/'
+blobfolder = '/data/'
+database = '/data/database.sqlite3'
+
 
 # Set up API keys
 authfile = 'auth-keys.csv'  # username,key
@@ -393,6 +395,8 @@ class Student(Resource):
             return '', 204
 
 # ---------- Set up Flask ---------
+
+if not exists(database): sql_create_clean_database(database)
 
 auth_keys_lookup = setup_auth_keys(authfile)
 

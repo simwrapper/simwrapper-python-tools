@@ -6,4 +6,5 @@ dist/
 .build-sentinel
 simwrapper/blobs
 simwrapper/database.sqlite3
+auth-keys.csv
 
