@@ -315,16 +315,22 @@ class Job(Resource):
         """ Update job - change status etc
         """
         if not is_valid_api_key(): return "Invalid API Key", 403
-        if not job_id.isnumeric(): return "Invaoid ID", 403
+        if not job_id.isnumeric(): return "Invalid ID", 403
 
-        parser.add_argument("status")
+        for column in JOB_COLUMNS:
+            parser.add_argument(column)
         args = parser.parse_args()
 
-        if args["status"] is not None:
-            result = sql_update_job(job_id, args)
-            return result, 200
+        # fetch existing copy
+        job = sql_select_jobs({"id": job_id})
+        if len(job) != 1: return "Invalid ID", 404
+        job = job[0]
 
-        return "no status in request", 500
+        for column in JOB_COLUMNS:
+            args[column] = args[column] if args[column] is not None else job[column]
+
+        result = sql_update_job(job_id, args)
+        return result, 200
 
 
 class File(Resource):
