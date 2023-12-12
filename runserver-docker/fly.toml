@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for simwrapper-api on 2023-12-10T22:48:39+01:00
+# fly.toml app configuration file generated for vsp-cluster on 2023-12-12T17:28:51+01:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = "simwrapper-api"
+app = "vsp-cluster"
 primary_region = "ams"
 
 [build]
@@ -11,6 +11,7 @@ primary_region = "ams"
 [[mounts]]
   source = "simwrapper_data"
   destination = "/data"
+  initial_size = "1gb"
   auto_extend_size_threshold = 0
 
 [http_service]

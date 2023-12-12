@@ -5,7 +5,7 @@
 import os,sys,requests,json,subprocess
 from enum import Enum
 
-SERVER = 'https://simwrapper-api.fly.dev'
+SERVER = 'https://vsp-cluster.fly.dev'
 BASE_FOLDER = '/net/ils'
 
 APIKEY = 'APIKEY' in os.environ and os.environ['APIKEY'] or 'nope'
@@ -21,9 +21,9 @@ STATUS = {
     'error': 6
 }
 
-def set_job_status(job_id, status):
+def set_job_status(job_id, dest=None, status=0):
     headers = {"Authorization": APIKEY, "Content-Type": "application/json" }
-    r = requests.put(f"{SERVER}/jobs/{job_id}", data = json.dumps({"status": status}), headers=headers)
+    r = requests.put(f"{SERVER}/jobs/{job_id}", data = json.dumps({"status": status, "folder": dest}), headers=headers)
     print(r)
 
 
@@ -68,7 +68,7 @@ def download_all_job_files(file_lookup, dest):
 
 def qsub_launch(job, dest):
     command = job.get("qsub", None)
-    if command == None: raise "No qsub command"
+    if command == None: raise ValueError("No qsub command")
 
     print('LAUNCHING', command)
     process = subprocess.run(
@@ -78,24 +78,38 @@ def qsub_launch(job, dest):
     return process.returncode
 
 
+def create_output_folder(job, attempt=None):
+    owner = job["owner"] or "simrunner"
+    job_id = job["id"]
+    run = f'{job_id:04}'
+    dest = f"{BASE_FOLDER}/{owner}/run-{run}"
+
+    if attempt != None: dest = dest + f"-{attempt}"
+    print('DESTINATION FOLDER:', dest)
+
+    try:
+        os.makedirs(dest)
+    except:
+        if attempt == 100: raise RuntimeError("Cannot create dest folder")
+        attempt = attempt == None and 1 or attempt+1
+        dest = create_output_folder(job, attempt)
+    return dest
+
 def handle_new_job(job):
     job_id = job["id"]
     print('Acknowledging job', job_id)
 
 
     # acknowledge that we are processing the job
-    set_job_status(job_id, STATUS['preparing'])
+    set_job_status(job_id, status=STATUS['preparing'])
 
     # get list of files for this job
     file_lookup = get_file_list(job_id)
 
     # create output folder
-    owner = job["owner"] or "simrunner"
-    run = f'{job_id:04}'
-    dest = f"{BASE_FOLDER}/{owner}/run-{run}"
-    print('DESTINATION FOLDER:', dest)
-    os.makedirs(dest)
-   
+    dest = create_output_folder(job)
+    print('CREATED:',dest)
+
     # download all files
     download_all_job_files(file_lookup, dest)
 
@@ -105,9 +119,9 @@ def handle_new_job(job):
 
     # set status
     if return_code == 0:
-        set_job_status(job_id, STATUS['launched'])
+        set_job_status(job_id, dest=dest, status=STATUS['launched'])
     else:
-        set_job_status(job_id, STATUS['error'])
+        set_job_status(job_id, dest=dest, status=STATUS['error'])
 
 def main():
     with open('jobs.json', 'r') as f:

@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+
+# RunServer.py #######################################################
+# This is the SimWrapper Runner API.
+#
+# It does one thing: it is a REST API application which can run in the
+# cloud somewhere and accepts job requests and file uploads from
+# SimWrapper users.
+#
+# Separately, the cluster-daemon program will occasionally poll this service
+# to see if any new jobs have been submitted, and that cluster daemon
+# will fetch the files and try to launch the job on the compute resource.
+
 import os,sys,tempfile,random,shutil
 from os.path import exists
 
@@ -7,16 +19,20 @@ from sqlite3 import Error
 from hashlib import sha1
 
 from flask import Flask, request, send_file
+from flask_cors import CORS
 from flask_restful import Resource, Api, reqparse
 from flask_uploads import UploadSet, configure_uploads, ALL
 
-# database = ':memory:'
+# Storage volume expected to be mounted on /data:
 blobfolder = '/data/'
 database = '/data/database.sqlite3'
 
-
 # Set up API keys
 authfile = 'auth-keys.csv'  # username,key
+valid_api_keys = {}
+
+parser = reqparse.RequestParser()
+
 
 def setup_auth_keys(authfile):
     lookup = {}
@@ -45,9 +61,9 @@ def setup_auth_keys(authfile):
     return lookup
 
 ### SQL HELPERS ------------------------------------------------------------
-JOB_COLUMNS = ['id','owner','status','start_date','end_date','qsub','launcher']
+JOB_COLUMNS = ['id','owner','status','folder','start','qsub']
 FILE_COLUMNS = ['id', 'name', 'hash','file_type', 'sizeof', 'modified_date', 'job_id']
-JOB_STATUS = ['Not started', 'Queued', 'Preparing', 'Running', 'Complete', 'Cancelled', 'Error']
+# JOB_STATUS = ['Not started', 'Queued', 'Preparing', 'Launched', 'Complete', 'Cancelled', 'Error']
 
 def sql_create_connection(filename):
     """ create a database connection to a database
@@ -59,6 +75,7 @@ def sql_create_connection(filename):
     except Error as e:
         print(e)
     return conn
+
 
 def sql_create_table(conn, create_table_sql):
     """ create a table from the create_table_sql statement
@@ -72,16 +89,16 @@ def sql_create_table(conn, create_table_sql):
     except Error as e:
         print(e)
 
+
 def sql_create_clean_database(database):
 
     sql_create_jobs_table = """CREATE TABLE IF NOT EXISTS jobs (
                                         id INTEGER PRIMARY KEY,
                                         owner TEXT,
                                         status INTEGER,
-                                        start_date TEXT,
-                                        end_date TEXT,
-                                        qsub TEXT,
-                                        launcher TEXT
+                                        folder TEXT,
+                                        start TEXT,
+                                        qsub TEXT
                             ); """
 
     sql_create_files_table = """CREATE TABLE IF NOT EXISTS files (
@@ -95,7 +112,6 @@ def sql_create_clean_database(database):
                                     FOREIGN KEY (job_id) REFERENCES jobs(id)
                                 );"""
 
-
     conn = sql_create_connection(database)
 
     if conn is not None:
@@ -103,6 +119,7 @@ def sql_create_clean_database(database):
         sql_create_table(conn, sql_create_files_table)
     else:
         print('cannot create database connection')
+
 
 def sql_select_jobs(queryTerms):
     conn = sql_create_connection(database)
@@ -125,6 +142,7 @@ def sql_select_jobs(queryTerms):
         return answerDict
     return []
 
+
 def sql_insert_job(queryDict):
     conn = sql_create_connection(database)
     with conn:
@@ -139,6 +157,7 @@ def sql_insert_job(queryDict):
 
         # print(cur.lastrowid)
         return cur.lastrowid
+
 
 def sql_update_job(job_id, queryDict):
     conn = sql_create_connection(database)
@@ -158,6 +177,7 @@ def sql_update_job(job_id, queryDict):
         return cur.lastrowid
     return "nope", 500
 
+
 def sql_insert_file(queryDict):
     conn = sql_create_connection(database)
     with conn:
@@ -173,6 +193,7 @@ def sql_insert_file(queryDict):
         return cur.lastrowid
 
     return "Could not add file", 500
+
 
 def sql_select_files(queryTerms):
     conn = sql_create_connection(database)
@@ -194,6 +215,7 @@ def sql_select_files(queryTerms):
             answerDict.append(json)
         return answerDict
     return []
+
 
 def sql_select_files_by_hash(hash):
     conn = sql_create_connection(database)
@@ -222,22 +244,12 @@ def getHash(filename):
         sha.update(data)
     return sha.hexdigest()
 
+
 def is_valid_api_key():
-    return True
-    # apikey = request.headers.get('Authorization')
-    # if apikey in valid_api_keys:
-    #     return True
-    # return False
+    apikey = request.headers.get('Authorization')
+    if apikey in valid_api_keys: return True
+    return False
 
-
-STUDENTS = {
-  '1': {'name': 'Mark', 'age': 43, 'spec': 'math'},
-  '2': {'name': 'Jane', 'age': 20, 'spec': 'biology'},
-  '3': {'name': 'Pete', 'age': 21, 'spec': 'history'},
-  '4': {'name': 'Kate', 'age': 22, 'spec': 'science'},
-}
-
-parser = reqparse.RequestParser()
 
 class FilesList(Resource):
     def get(self):
@@ -275,6 +287,7 @@ class FilesList(Resource):
 
         return "Failed, file not uploaded", 500
 
+
 class JobsList(Resource):
     def get(self):
         if not is_valid_api_key(): return "Invalid API Key", 403
@@ -286,22 +299,24 @@ class JobsList(Resource):
 
 
     def post(self):
-        """ Create new empty unstarted job
-        """
+        """ Create new empty unstarted job"""
         if not is_valid_api_key(): return "Invalid API Key", 403
 
-        parser.add_argument("owner")
-        parser.add_argument("status")
-        parser.add_argument("start_date")
-        parser.add_argument("end_date")
-        parser.add_argument("qsub")
-        parser.add_argument("launcher")
+        for column in JOB_COLUMNS:
+          parser.add_argument(column)
+
         job = parser.parse_args()
         job["status"] = 0
-        # print(job)
 
+        # map the username
+        apikey = request.headers.get('Authorization')
+        username = valid_api_keys[apikey]
+        if username: job["owner"] = username
+
+        print(12345, job)
         result = sql_insert_job(job)
         return result, 201 # created
+
 
 class Job(Resource):
     # def get(self, job_id):
@@ -364,53 +379,20 @@ class File(Resource):
     #     return "no status in request", 500
 
 
-class Student(Resource):
-    def get(self, student_id):
-        if not is_valid_api_key(): return "Invalid API Key", 403
-
-        if student_id not in STUDENTS:
-            return "Not found", 404
-        else:
-            return STUDENTS[student_id]
-
-    # update
-    def put(self, student_id):
-        if not is_valid_api_key(): return "Invalid API Key", 403
-
-        parser.add_argument("name")
-        parser.add_argument("age")
-        parser.add_argument("spec")
-        args = parser.parse_args()
-
-        if student_id not in STUDENTS:
-            return "Not found", 404
-        else:
-            student = STUDENTS[student_id]
-            student["name"] = args["name"] if args["name"] is not None else student["name"]
-            student["age"] = args["age"] if args["age"] is not None else student["age"]
-            student["spec"] = args["spec"] if args["spec"] is not None else student["spec"]
-            return student, 200
-
-    def delete(self, student_id):
-        if not is_valid_api_key(): return "Invalid API Key", 403
-
-        if student_id not in STUDENTS:
-            return "Not found", 404
-        else:
-            del STUDENTS[student_id]
-            return '', 204
-
 # ---------- Set up Flask ---------
 
 if not exists(database): sql_create_clean_database(database)
 
-auth_keys_lookup = setup_auth_keys(authfile)
+valid_api_keys = setup_auth_keys(authfile)
 
 app = Flask(__name__)
+CORS(app)
+# app.config['CORS_HEADERS'] = 'Content-Type'
+
 api = Api(app)
 
 # Set up Flask Uploads ----------------------------------------------
-app.config['MAX_CONTENT_LENGTH'] = 250 * 1024 * 1024 # 250Mb
+app.config['MAX_CONTENT_LENGTH'] = 125 * 1024 * 1024 # 125 max file size
 app.config["UPLOADED_FILES_DEST"] = blobfolder
 files = UploadSet("files", ALL)
 configure_uploads(app, files)
@@ -426,4 +408,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
