@@ -31,8 +31,6 @@ database = '/data/database.sqlite3'
 authfile = 'auth-keys.csv'  # username,key
 valid_api_keys = {}
 
-parser = reqparse.RequestParser()
-
 
 def setup_auth_keys(authfile):
     lookup = {}
@@ -62,8 +60,9 @@ def setup_auth_keys(authfile):
 
 ### SQL HELPERS ------------------------------------------------------------
 JOB_COLUMNS = ['id','owner','status','folder','project', 'start','script', 'qsub_id']
-FILE_COLUMNS = ['id', 'name', 'hash','file_type', 'sizeof', 'modified_date', 'job_id']
+FILE_COLUMNS = ['id', 'name', 'hash','file_type', 'size_of', 'modified_date', 'job_id']
 # JOB_STATUS = ['Not started', 'Queued', 'Preparing', 'Launched', 'Complete', 'Cancelled', 'Error']
+
 
 def sql_create_connection(filename):
     """ create a database connection to a database
@@ -261,8 +260,20 @@ class FilesList(Resource):
     def post(self):
         if not is_valid_api_key(): return "Invalid API Key", 403
 
-        # print("### FILES", request.files)
-        # print("### FORM", request.form)
+        print("### FILES", request.files)
+        print("### FORM", request.form)
+
+        if not "file" in request.files:
+            try:
+                files_parser = reqparse.RequestParser()
+                for column in FILE_COLUMNS:
+                    files_parser.add_argument(column)
+                params = files_parser.parse_args()
+
+                result = sql_insert_file(params)
+                return result, 201 # created
+            except Error as e:
+                print(e)
 
         if "file" in request.files:
             myFile = request.files["file"]
@@ -304,10 +315,10 @@ class JobsList(Resource):
         """ Create new empty unstarted job"""
         if not is_valid_api_key(): return "Invalid API Key", 403
 
+        job_parser = reqparse.RequestParser()
         for column in JOB_COLUMNS:
-          parser.add_argument(column)
-
-        job = parser.parse_args()
+            job_parser.add_argument(column)
+        job = job_parser.parse_args()
         job["status"] = 0
 
         # map the username
@@ -334,9 +345,10 @@ class Job(Resource):
         if not is_valid_api_key(): return "Invalid API Key", 403
         if not job_id.isnumeric(): return "Invalid ID", 403
 
+        job_parser = reqparse.RequestParser()
         for column in JOB_COLUMNS:
-            parser.add_argument(column)
-        args = parser.parse_args()
+            job_parser.add_argument(column)
+        args = job_parser.parse_args()
 
         # fetch existing copy
         job = sql_select_jobs({"id": job_id})

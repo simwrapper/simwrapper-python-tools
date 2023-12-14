@@ -11,21 +11,22 @@ BASE_FOLDER = '/net/ils'
 APIKEY = 'APIKEY' in os.environ and os.environ['APIKEY'] or 'nope'
 
 STATUS = {
-    'new': 0,
-    'queued': 1,
+    'draft': 0,
+    'submitted': 1,
     'preparing': 2,
-    'launched': 3,
-    'complete': 4,
-    'cancelled': 5,
-    'error': 6
+    'queued': 3,
+    'running': 4,
+    'complete': 5,
+    'cancelled': 6,
+    'error': 7
 }
 
-def set_job_status(job_id, dest=None, status=0, qsub_id=None):
+def set_job_status(job_id, dest=None, status=0, qsub_id=None, start=None):
     headers = {"Authorization": APIKEY, "Content-Type": "application/json" }
     r = requests.put(
             f"{SERVER}/jobs/{job_id}", 
             headers=headers,
-            data = json.dumps({"status":status, "folder":dest, "qsub_id":qsub_id})
+            data = json.dumps({"status":status, "folder":dest, "qsub_id":qsub_id, "start":start})
     )
     print(r)
 
@@ -55,7 +56,6 @@ def get_file_list(job_id):
 
 def download_single_file(file_record, dest):
         filename = f"{dest}/{file_record['name']}"
-        print(111, filename)
         url = f"{SERVER}/files/{file_record['id']}"
         with requests.get(url, headers = {"Authorization": APIKEY }, stream=True) as r:
             r.raise_for_status()
@@ -64,7 +64,6 @@ def download_single_file(file_record, dest):
 
 
 def download_all_job_files(file_lookup, dest):
-    print(112, file_lookup)
     for filename in file_lookup:
         print(f"Fetching {filename}")
         download_single_file(file_lookup[filename], dest)
@@ -139,18 +138,19 @@ def handle_new_job(job):
     if qsub_id == -1:
         set_job_status(job_id, dest=dest, status=STATUS['error'])
     else:
-        set_job_status(job_id, dest=dest, status=STATUS['launched'], qsub_id=qsub_id)
+        set_job_status(job_id, dest=dest, status=STATUS['queued'], qsub_id=qsub_id)
 
 
 def check_status_of_running_jobs():
     lookup_by_qstat = {}
-    status_codes = {'p':3, 'r':3, 's':5, 'z':4} # pending, running, stopped, finished
+    # qsub status codes are: pending, running, stopped, finished:
+    status_codes = {'p':STATUS['queued'], 'r':STATUS['running'], 's':STATUS['cancelled'], 'z':STATUS['complete']} 
 
     with open('running.json', 'r') as f:
         running = json.load(f)
         for job in running: lookup_by_qstat[job["qsub_id"]] = job["id"]
 
-    # get completed jobs from qstat
+    # get jobs from qstat command
     process = subprocess.run(
         f"qstat -s prsz -u {os.environ['USER']}",
         shell=True,
@@ -170,8 +170,9 @@ def check_status_of_running_jobs():
         qstat_id = fields[0]
         qstat_status = fields[4]
         if qstat_id in lookup_by_qstat:
-            status = status_codes.get(qstat_status) or 3 # weird code? Just say still running
-            set_job_status(lookup_by_qstat[qstat_id], status=status)
+            status = status_codes.get(qstat_status) or STATUS['running'] # weird code? Just say still running
+            date = len(fields) >= 7 and f"{fields[5]} {fields[6]}" or None
+            set_job_status(lookup_by_qstat[qstat_id], status=status, start=date)
 
 
 def main():
