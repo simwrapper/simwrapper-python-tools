@@ -61,7 +61,7 @@ def setup_auth_keys(authfile):
 ### SQL HELPERS ------------------------------------------------------------
 JOB_COLUMNS = ['id','owner','status','folder','project', 'start','script', 'qsub_id']
 FILE_COLUMNS = ['id', 'name', 'hash','file_type', 'size_of', 'modified_date', 'job_id']
-# JOB_STATUS = ['Not started', 'Queued', 'Preparing', 'Launched', 'Complete', 'Cancelled', 'Error']
+# JOB_STATUS = ['Not started', 'Submitted', 'Preparing', 'Queued', 'Launched', 'Complete', 'Cancelled', 'Error']
 
 
 def sql_create_connection(filename):
@@ -125,12 +125,16 @@ def sql_create_clean_database(database):
 def sql_select_jobs(queryTerms):
     conn = sql_create_connection(database)
     with conn:
-        terms = [f"{x}=:{x}" for x in queryTerms.keys()]
-        joined = "AND ".join(terms)
-        # No injection please
-        if (joined.find(';') > -1): return []
-        sql = "SELECT * FROM jobs "
-        if len(terms) > 0: sql += "WHERE " + joined
+        if 'running' in queryTerms.keys():
+          sql = "SELECT * FROM jobs WHERE status=3 OR status=4"
+        else:
+          terms = [f"{x}=:{x}" for x in queryTerms.keys()]
+          joined = "AND ".join(terms)
+          # No injection please
+          if (joined.find(';') > -1): return []
+          sql = "SELECT * FROM jobs "
+          if len(terms) > 0: sql += "WHERE " + joined
+
         cur = conn.cursor()
         cur.execute(sql, queryTerms)
         rows = cur.fetchall()

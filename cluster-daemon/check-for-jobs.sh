@@ -8,6 +8,7 @@ APIKEY="$SIMWRAPPER_API_KEY"
 # -------------------------------------------
 
 check_for_new_jobs() {
+  # status=1: queued
   if ( ! timeout 1m bash -c \
 	  "until curl -s -f -o jobs.json -H 'Authorization: $APIKEY' $SERVER/jobs/?status=1; do sleep 7; done" ); \
   then
@@ -23,8 +24,9 @@ check_for_new_jobs() {
 }
 
 check_for_running_jobs() {
+  # status=4: running
   if ( ! timeout 1m bash -c \
-	  "until curl -s -f -o running.json -H 'Authorization: $APIKEY' $SERVER/jobs/?status=3; do sleep 7; done" ); \
+	  "until curl -s -f -o running.json -H 'Authorization: $APIKEY' $SERVER/jobs/?running; do sleep 7; done" ); \
   then
      echo "FAIL fetching jobs status"
      exit 1
