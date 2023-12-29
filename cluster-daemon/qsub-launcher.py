@@ -70,16 +70,56 @@ def download_all_job_files(file_lookup, dest):
     print('ALL FILES COPIED')
 
 
+def build_qsub_command(job, dest):
+    project = job.get("project","simrunner")
+    email = job.get("cEmail","")
+    ram = job.get("cRAM", "1g")
+    processors = job.get("cProcessors","1")
+
+    # is command an existing file? Read it
+    try:
+        with open(os.path.join(dest, job['script']),'r') as f:
+            script = f.read()
+
+    # otherwise command is a shell command
+    except:
+        script = job['script']
+
+
+    preamble = f"""/bin/bash --login
+set -euo pipefail
+#----------------------------
+# TU COMPUTE CLUSTER SETTINGS
+#----------------------------
+#$ -M {email}
+#$ -N {project}
+#$ -l mem_free={ram}
+#$ -pe mp {processors}
+#$ -o simrunner.log
+#$ -j y
+#$ -m abe
+#$ -cwd
+#----------------------------
+
+{script}
+
+"""
+    with open(os.path.join(dest, 'qsub-launch.sh'),'w') as f:
+        f.write(preamble)
+    return
+
 def qsub_launch(job, dest):
     command = job.get("script", None)
     if command == None: return (-1, "No script command")
 
+    build_qsub_command(job,dest)
+
     print('LAUNCHING', command)
     process = subprocess.run(
-        ['qsub', command],
+        ['qsub', 'qsub-launch.sh'],
         cwd = dest,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-    )
+        )
     # scrape ID
     stdout = process.stdout.decode('utf-8')
     if 'has been submitted' in stdout:

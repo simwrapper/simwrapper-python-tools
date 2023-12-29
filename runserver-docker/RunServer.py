@@ -59,7 +59,7 @@ def setup_auth_keys(authfile):
     return lookup
 
 ### SQL HELPERS ------------------------------------------------------------
-JOB_COLUMNS = ['id','owner','status','folder','project', 'start','script', 'qsub_id']
+JOB_COLUMNS = ['id','owner','status','folder','project', 'start','script', 'qsub_id', 'cRAM', 'cProcessors', 'cEmail']
 FILE_COLUMNS = ['id', 'name', 'hash','file_type', 'size_of', 'modified_date', 'job_id']
 # JOB_STATUS = ['Not started', 'Submitted', 'Preparing', 'Queued', 'Launched', 'Complete', 'Cancelled', 'Error']
 
@@ -99,7 +99,10 @@ def sql_create_clean_database(database):
                                         project TEXT,
                                         start TEXT,
                                         script TEXT,
-                                        qsub_id TEXT
+                                        qsub_id TEXT,
+                                        cRAM TEXT,
+                                        cProcessors TEXT,
+                                        cEmail TEXT
                             ); """
 
     sql_create_files_table = """CREATE TABLE IF NOT EXISTS files (
