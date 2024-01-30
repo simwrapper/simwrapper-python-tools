@@ -1,0 +1,12 @@
+MAILTO=charlton@vsp.tu-berlin.de
+SIMWRAPPER_API_KEY="charlton-12400.622.1717"
+
+# check for new jobs every 3 minutes, no error messages
+*/3 * * * * ~/check-for-jobs.sh silent mode
+
+# update job statuses every 3 minutes, no error messages
+1,4,7,10,13,16,19,22,25,28,31,34,37,40,43,46,49,52,55,58 * * * * ~/check-for-jobs.sh check_running
+
+# check for new jobs once an hour - send error email if it fails
+2 * * * * ~/check-for-jobs.sh
+

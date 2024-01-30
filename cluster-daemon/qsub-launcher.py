@@ -71,10 +71,10 @@ def download_all_job_files(file_lookup, dest):
 
 
 def build_qsub_command(job, dest):
-    project = job.get("project","simrunner")
+    project = job.get("project","simrunner") or "simrunner"
     email = job.get("cEmail","")
-    ram = job.get("cRAM", "1g")
-    processors = job.get("cProcessors","1")
+    ram = job.get("cRAM", "1G") or "1G"
+    processors = job.get("cProcessors","1") or "1"
 
     # is command an existing file? Read it
     try:
@@ -100,6 +100,7 @@ set -euo pipefail
 #$ -m abe
 #$ -cwd
 #----------------------------
+umask 0007
 
 {script}
 
@@ -139,8 +140,7 @@ def create_output_folder(job, attempt=None):
     if project:
         dest = f"{BASE_FOLDER}/{project}/run-{run}"
     else:
-        dest = f"{BASE_FOLDER}/{owner}/run-{run}"
-
+        dest = f"{BASE_FOLDER}/runs/{owner}/run-{run}"
 
     if attempt != None: dest = dest + f"-{attempt}"
     print('DESTINATION FOLDER:', dest)

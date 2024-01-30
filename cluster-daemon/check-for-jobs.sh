@@ -7,6 +7,15 @@ SERVER=https://vsp-cluster.fly.dev
 APIKEY="$SIMWRAPPER_API_KEY"
 # -------------------------------------------
 
+# HOW IT WORKS:
+# 1. "check_for_jobs.sh" is run from cron every three minutes to ping the intermediate server
+#    on the internet and see if any new jobs are in the queue
+# 2. If it finds any new jobs in queue, it calls qsub-launcher.py which *writes* qsub-launch.sh which 
+#    runs the command via qsub.
+# 3. "check_for_jobs status" is also run from cron every three minutes (but one minute later) and
+#    and it calls the qsub status command to see if any jobs are running
+# 4. If yes it posts the status, completed, error, etc to the intermediate server with statuses
+
 check_for_new_jobs() {
   # status=1: queued
   if ( ! timeout 1m bash -c \
@@ -39,10 +48,16 @@ check_for_running_jobs() {
   fi
 }
 
-if [ $# -eq 0 ]; then
+if   [ $# -eq 0 ]; then
+    # check for newly queued jobs
     check_for_new_jobs
-else
+elif [ $# -eq 1 ]; then
+    # get status of running jobs
     check_for_running_jobs > /dev/null 2>&1
+else
+    # silent mode
+    check_for_new_jobs > /dev/null 2>&1
 fi
+
 exit 0
 
