@@ -86,26 +86,27 @@ def build_qsub_command(job, dest):
         script = job['script']
 
 
-    preamble = f"""/bin/bash --login
-set -euo pipefail
+    preamble = f"""#!/bin/bash --login
 #----------------------------
 # TU COMPUTE CLUSTER SETTINGS
 #----------------------------
-#$ -M {email}
-#$ -N {project}
-#$ -l mem_free={ram}
-#$ -pe mp {processors}
-#$ -o simrunner.log
-#$ -j y
-#$ -m abe
-#$ -cwd
-#----------------------------
+#SBATCH --job-name={project}
+#SBATCH --output=simrunner.log
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --time=96:00:00
+#SBATCH --cpus-per-task={processors}
+#SBATCH --mem={ram}
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user={email}
+set -euo pipefail
 umask 0007
+#----------------------------
 
 {script}
 
 """
-    with open(os.path.join(dest, 'qsub-launch.sh'),'w') as f:
+    with open(os.path.join(dest, 'sbatch-launch.sh'),'w') as f:
         f.write(preamble)
     return
 
@@ -117,15 +118,16 @@ def qsub_launch(job, dest):
 
     print('LAUNCHING', command)
     process = subprocess.run(
-        ['qsub', 'qsub-launch.sh'],
+        ['sbatch', 'sbatch-launch.sh'],
         cwd = dest,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
     # scrape ID
     stdout = process.stdout.decode('utf-8')
-    if 'has been submitted' in stdout:
-        loc = stdout.find('Your job ')
-        qsub_id = stdout[loc+9:].split()[0]
+    if 'Submitted batch job' in stdout:
+        lines = stdout.split('\n')
+        qsub_id = lines[0][20:]
+        print("funky: ",qsub_id)
         return (qsub_id, stdout)
     # error
     return (-1, stdout)
@@ -172,7 +174,7 @@ def handle_new_job(job):
 
     # launch
     qsub_id, stdout = qsub_launch(job, dest)
-    if not stdout.startswith('Your job '): dest += f' :: {stdout}'
+    if not stdout.startswith('Submitted batch job'): dest += f' :: {stdout}'
 
     # set status
     if qsub_id == -1:
@@ -184,7 +186,8 @@ def handle_new_job(job):
 def check_status_of_running_jobs():
     lookup_by_qstat = {}
     # qsub status codes are: pending, running, stopped, finished:
-    status_codes = {'p':STATUS['queued'], 'r':STATUS['running'], 's':STATUS['cancelled'], 'z':STATUS['complete']} 
+    status_codes = {'PD':STATUS['queued'], 'R':STATUS['running'], 'CA':STATUS['cancelled'],
+                    'CD':STATUS['complete'], 'F':STATUS['error']} 
 
     with open('running.json', 'r') as f:
         running = json.load(f)
@@ -192,26 +195,28 @@ def check_status_of_running_jobs():
 
     # get jobs from qstat command
     process = subprocess.run(
-        f"qstat -s prsz -u {os.environ['USER']}",
+        # f"qstat -s prsz -u {os.environ['USER']}",
+        f'squeue --states=all --me --format "%.18i %.2t %S"',
         shell=True,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT
     )
     qstat_output = process.stdout.decode('utf-8').split('\n')
 
     # quit if we got no useful results
-    if len(qstat_output) <= 2: return
+    if len(qstat_output) <= 1: return
 
     # parse results
-    qstat_output = qstat_output[2:]
+    qstat_output = qstat_output[1:]
     for job in qstat_output:
         fields = job.split()
-        if len(fields) < 5: continue
+        if len(fields) < 2: continue
 
         qstat_id = fields[0]
-        qstat_status = fields[4]
+        qstat_status = fields[1]
         if qstat_id in lookup_by_qstat:
             status = status_codes.get(qstat_status) or STATUS['running'] # weird code? Just say still running
-            date = len(fields) >= 7 and f"{fields[5]} {fields[6]}" or None
+            date = len(fields) >= 3 and f"{fields[2]}" or None
+            if date: date = date[:10] + ' ' + date[11:]
             set_job_status(lookup_by_qstat[qstat_id], status=status, start=date)
 
 
