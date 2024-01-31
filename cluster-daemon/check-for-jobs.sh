@@ -16,7 +16,27 @@ APIKEY="$SIMWRAPPER_API_KEY"
 #    and it calls the qsub status command to see if any jobs are running
 # 4. If yes it posts the status, completed, error, etc to the intermediate server with statuses
 
+
+# check if the list of running jobs has changed, and post anything new to simwrapper server
+poll_running_jobs() {
+  jobs=$(squeue --states=all --format "%g %u %.18i  %.2t  %m  %D  %C  %I  %J  %V %S  %e  >>%o" | grep "^ils")
+
+  if diff <(echo "$jobs") ~/squeue.txt >/dev/null; then
+    echo "same" > /dev/null
+  else
+    echo "different" > /dev/null
+    echo "$jobs" > ~/squeue.txt
+
+    # post new list to simwrammer: ...
+  fi
+}
+
+
+# update list of current jobs, and check for any new jobs from simwrapper
 check_for_new_jobs() {
+
+  poll_running_jobs
+
   # status=1: queued
   if ( ! timeout 1m bash -c \
 	  "until curl -s -f -o jobs.json -H 'Authorization: $APIKEY' $SERVER/jobs/?status=1; do sleep 7; done" ); \
