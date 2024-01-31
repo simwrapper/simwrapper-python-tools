@@ -139,10 +139,20 @@ def create_output_folder(job, attempt=None):
     run = f'{job_id}' # f'{job_id:04}'
     project = job["project"]
 
+    print(1,project) 
     if project:
-        dest = f"{BASE_FOLDER}/{project}/run-{run}"
+        # Even if it starts with slash, it goes inside /net/ils
+        if project.startswith(BASE_FOLDER): project = project[9:]
+        print(2,project)
+        project = f'{BASE_FOLDER}/{project}'
+        print(3,project)
+        dest = f"{project}/run-{run}"
+        print(4,dest)
+        dest = dest.replace('//','/')
+        print(5,dest)
     else:
-        dest = f"{BASE_FOLDER}/runs/{owner}/run-{run}"
+        dest = f"{BASE_FOLDER}/{owner}/run-{run}"
+        print(6,dest)
 
     if attempt != None: dest = dest + f"-{attempt}"
     print('DESTINATION FOLDER:', dest)
