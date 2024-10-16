@@ -18,10 +18,11 @@ import sqlite3
 from sqlite3 import Error
 from hashlib import sha1
 
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, make_response
 from flask_cors import CORS
 from flask_restful import Resource, Api, reqparse
 from flask_uploads import UploadSet, configure_uploads, ALL
+from functools import wraps
 
 # Storage volume expected to be mounted on /data:
 blobfolder = '/data/'
@@ -31,6 +32,17 @@ database = '/data/database.sqlite3'
 authfile = 'auth-keys.csv'  # username,key
 valid_api_keys = {}
 
+squeue_jobs_tsv = ''
+
+def nocache(view):
+    @wraps(view)
+    def no_cache(*args, **kwargs):
+        response = make_response(view(*args, **kwargs))
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '-1'
+        return response
+    return no_cache
 
 def setup_auth_keys(authfile):
     lookup = {}
@@ -260,6 +272,7 @@ def is_valid_api_key():
 
 
 class FilesList(Resource):
+    @nocache
     def get(self):
         if not is_valid_api_key(): return "Invalid API Key", 403
         return sql_select_files(request.args)
@@ -309,6 +322,7 @@ class FilesList(Resource):
 
 
 class JobsList(Resource):
+    @nocache
     def get(self):
         if not is_valid_api_key(): return "Invalid API Key", 403
 
@@ -370,6 +384,7 @@ class Job(Resource):
 
 
 class File(Resource):
+    @nocache
     def get(self, file_id):
         if not is_valid_api_key(): return "Invalid API Key", 403
 
@@ -399,6 +414,24 @@ class File(Resource):
 
     #     return "no status in request", 500
 
+class SQueueList(Resource):
+    @nocache
+    def get(self):
+        if not is_valid_api_key(): return "Invalid API Key", 403
+        return { "squeue": squeue_jobs_tsv }
+
+    def post(self):
+        """ Update list of jobs from SQUEUE"""
+        if not is_valid_api_key(): return "Invalid API Key", 403
+
+        global squeue_jobs_tsv
+
+        job = request.files['squeue'] # job_parser.parse_args()
+        content = job.read()
+        squeue_jobs_tsv = content.decode("utf-8")
+
+        return 200
+
 
 # ---------- Set up Flask ---------
 
@@ -407,12 +440,14 @@ if not exists(database): sql_create_clean_database(database)
 valid_api_keys = setup_auth_keys(authfile)
 
 app = Flask(__name__)
+
 CORS(app)
 # app.config['CORS_HEADERS'] = 'Content-Type'
 
 api = Api(app)
 
 # Set up Flask Uploads ----------------------------------------------
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.config['MAX_CONTENT_LENGTH'] = 125 * 1024 * 1024 # 125 max file size
 app.config["UPLOADED_FILES_DEST"] = blobfolder
 files = UploadSet("files", ALL)
@@ -422,6 +457,7 @@ api.add_resource(FilesList, '/files/')
 api.add_resource(File, '/files/<file_id>')
 api.add_resource(JobsList, '/jobs/')
 api.add_resource(Job, '/jobs/<job_id>')
+api.add_resource(SQueueList, '/squeue_jobs/')
 
 def main():
     sql_create_clean_database(database)

@@ -24,7 +24,7 @@ STATUS = {
 def set_job_status(job_id, dest=None, status=0, qsub_id=None, start=None):
     headers = {"Authorization": APIKEY, "Content-Type": "application/json" }
     r = requests.put(
-            f"{SERVER}/jobs/{job_id}", 
+            f"{SERVER}/jobs/{job_id}",
             headers=headers,
             data = json.dumps({"status":status, "folder":dest, "qsub_id":qsub_id, "start":start})
     )
@@ -35,9 +35,9 @@ def get_file_list(job_id):
     required_files = []
 
     file_lookup = {}
-    files = requests.get(f"{SERVER}/files/?job_id={job_id}", 
+    files = requests.get(f"{SERVER}/files/?job_id={job_id}",
                 headers = {"Authorization": APIKEY, "Content-Type": "application/json" }
-            ).json() 
+            ).json()
     for f in files:
         file_lookup[f["name"]] = f
 
@@ -45,10 +45,10 @@ def get_file_list(job_id):
     errors = []
     for f in required_files:
         if f not in file_lookup:
-            msg = f"Missing required file: {f}" 
+            msg = f"Missing required file: {f}"
             errors.append(msg)
             print(msg)
-    if len(errors) > 0: 
+    if len(errors) > 0:
         sys.exit(1)
 
     return file_lookup
@@ -91,14 +91,14 @@ def build_qsub_command(job, dest):
 # TU COMPUTE CLUSTER SETTINGS
 #----------------------------
 #SBATCH --job-name={project}
+#SBATCH --cpus-per-task={processors}
+#SBATCH --mem={ram}
+#SBATCH --mail-user={email}
+#SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --output=simrunner.log
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --time=96:00:00
-#SBATCH --cpus-per-task={processors}
-#SBATCH --mem={ram}
-#SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --mail-user={email}
 set -euo pipefail
 umask 0007
 #----------------------------
@@ -139,7 +139,7 @@ def create_output_folder(job, attempt=None):
     run = f'{job_id}' # f'{job_id:04}'
     project = job["project"]
 
-    print(1,project) 
+    print(1,project)
     if project:
         # Even if it starts with slash, it goes inside /net/ils
         if project.startswith(BASE_FOLDER): project = project[9:]
@@ -197,7 +197,7 @@ def check_status_of_running_jobs():
     lookup_by_qstat = {}
     # qsub status codes are: pending, running, stopped, finished:
     status_codes = {'PD':STATUS['queued'], 'R':STATUS['running'], 'CA':STATUS['cancelled'],
-                    'CD':STATUS['complete'], 'F':STATUS['error']} 
+                    'CD':STATUS['complete'], 'F':STATUS['error']}
 
     with open('running.json', 'r') as f:
         running = json.load(f)

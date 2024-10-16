@@ -10,7 +10,7 @@ APIKEY="$SIMWRAPPER_API_KEY"
 # HOW IT WORKS:
 # 1. "check_for_jobs.sh" is run from cron every three minutes to ping the intermediate server
 #    on the internet and see if any new jobs are in the queue
-# 2. If it finds any new jobs in queue, it calls qsub-launcher.py which *writes* qsub-launch.sh which 
+# 2. If it finds any new jobs in queue, it calls qsub-launcher.py which *writes* qsub-launch.sh which
 #    runs the command via qsub.
 # 3. "check_for_jobs status" is also run from cron every three minutes (but one minute later) and
 #    and it calls the qsub status command to see if any jobs are running
@@ -19,7 +19,7 @@ APIKEY="$SIMWRAPPER_API_KEY"
 
 # check if the list of running jobs has changed, and post anything new to simwrapper server
 poll_running_jobs() {
-  jobs=$(squeue --states=all --format "%g %u %.18i  %.2t  %m  %D  %C  %I  %J  %V %S  %e  >>%o" | grep "^ils")
+  jobs=$(squeue --states=all --format "%g,%u,%i,%t,%m,%D,%C,%I,%J,%V,%S,%e,\"%o\"" | egrep "^(GROUP|ils)")
 
   if diff <(echo "$jobs") ~/squeue.txt >/dev/null; then
     echo "same" > /dev/null
@@ -28,6 +28,9 @@ poll_running_jobs() {
     echo "$jobs" > ~/squeue.txt
 
     # post new list to simwrammer: ...
+    echo "POSTING $APIKEY"
+    curl -F "squeue=@squeue.txt" -H "Authorization: $APIKEY" $SERVER/squeue_jobs/
+    echo 'DONE'
   fi
 }
 
