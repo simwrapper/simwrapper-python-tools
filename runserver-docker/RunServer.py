@@ -71,7 +71,7 @@ def setup_auth_keys(authfile):
     return lookup
 
 ### SQL HELPERS ------------------------------------------------------------
-JOB_COLUMNS = ['id','owner','status','folder','project', 'start','script', 'qsub_id', 'cRAM', 'cProcessors', 'cEmail']
+JOB_COLUMNS = ['id','owner','status','folder','project', 'start','script', 'squeue_id', 'cRAM', 'cProcessors', 'cEmail']
 FILE_COLUMNS = ['id', 'name', 'hash','file_type', 'size_of', 'modified_date', 'job_id']
 # JOB_STATUS = ['Not started', 'Submitted', 'Preparing', 'Queued', 'Launched', 'Complete', 'Cancelled', 'Error']
 
@@ -111,7 +111,7 @@ def sql_create_clean_database(database):
                                         project TEXT,
                                         start TEXT,
                                         script TEXT,
-                                        qsub_id TEXT,
+                                        squeue_id TEXT,
                                         cRAM TEXT,
                                         cProcessors TEXT,
                                         cEmail TEXT
@@ -300,7 +300,7 @@ class FilesList(Resource):
             if myFile:
                 try:
                     user_filename = '' + myFile.filename
-                    tmpFile = "temp{}".format(random.randint(0,1e12))
+                    tmpFile = "temp{}".format(random.randint(0,10000000000000))
                     myFile.filename = tmpFile
                     filename = files.save(myFile)
                     tmpFullPath = os.path.join(blobfolder, tmpFile)

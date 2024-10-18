@@ -1,6 +1,6 @@
-# SIMWRAPPER/SIMRUNNER qsub job launcher
+# SIMWRAPPER/SIMRUNNER squeue job launcher
 # This reads the job list from jobs.json and goes through them,
-# launching qsub if possible.
+# launching via squeue if possible.
 
 import os,sys,requests,json,subprocess
 from enum import Enum
@@ -21,12 +21,12 @@ STATUS = {
     'error': 7
 }
 
-def set_job_status(job_id, dest=None, status=0, qsub_id=None, start=None):
+def set_job_status(job_id, dest=None, status=0, squeue_id=None, start=None):
     headers = {"Authorization": APIKEY, "Content-Type": "application/json" }
     r = requests.put(
             f"{SERVER}/jobs/{job_id}",
             headers=headers,
-            data = json.dumps({"status":status, "folder":dest, "qsub_id":qsub_id, "start":start})
+            data = json.dumps({"status":status, "folder":dest, "squeue_id":squeue_id, "start":start})
     )
     print(r)
 
@@ -70,7 +70,7 @@ def download_all_job_files(file_lookup, dest):
     print('ALL FILES COPIED')
 
 
-def build_qsub_command(job, dest):
+def build_squeue_command(job, dest):
     project = job.get("project","simrunner") or "simrunner"
     email = job.get("cEmail","")
     ram = job.get("cRAM", "1G") or "1G"
@@ -110,11 +110,11 @@ umask 0007
         f.write(preamble)
     return
 
-def qsub_launch(job, dest):
+def squeue_launch(job, dest):
     command = job.get("script", None)
     if command == None: return (-1, "No script command")
 
-    build_qsub_command(job,dest)
+    build_squeue_command(job, dest)
 
     print('LAUNCHING', command)
     process = subprocess.run(
@@ -126,9 +126,9 @@ def qsub_launch(job, dest):
     stdout = process.stdout.decode('utf-8')
     if 'Submitted batch job' in stdout:
         lines = stdout.split('\n')
-        qsub_id = lines[0][20:]
-        print("funky: ",qsub_id)
-        return (qsub_id, stdout)
+        squeue_id = lines[0][20:]
+        print("funky: ",squeue_id)
+        return (squeue_id, stdout)
     # error
     return (-1, stdout)
 
@@ -183,51 +183,73 @@ def handle_new_job(job):
     download_all_job_files(file_lookup, dest)
 
     # launch
-    qsub_id, stdout = qsub_launch(job, dest)
+    squeue_id, stdout = squeue_launch(job, dest)
     if not stdout.startswith('Submitted batch job'): dest += f' :: {stdout}'
 
     # set status
-    if qsub_id == -1:
+    if squeue_id == -1:
         set_job_status(job_id, dest=dest, status=STATUS['error'])
     else:
-        set_job_status(job_id, dest=dest, status=STATUS['queued'], qsub_id=qsub_id)
+        set_job_status(job_id, dest=dest, status=STATUS['queued'], squeue_id=squeue_id)
 
 
 def check_status_of_running_jobs():
-    lookup_by_qstat = {}
-    # qsub status codes are: pending, running, stopped, finished:
-    status_codes = {'PD':STATUS['queued'], 'R':STATUS['running'], 'CA':STATUS['cancelled'],
-                    'CD':STATUS['complete'], 'F':STATUS['error']}
+    lookup_by_squeue = {}
+
+    # squeue status codes for: pending, running, stopped, finished:
+    status_codes = {
+        "BF": STATUS['error'],
+        "CA": STATUS['cancelled'],
+        "CD": STATUS['complete'],
+        "CF": STATUS['running'],
+        "CG": STATUS['running'],
+        "DL": STATUS['cancelled'],
+        "F":STATUS[ 'error'],
+        "NF":STATUS[ 'error'],
+        "OOM": STATUS['error'],
+        "PD": STATUS['queued'],
+        "PR": STATUS['cancelled'],
+        "R":STATUS[ 'running'],
+        "RD": STATUS['queued'],
+        "SO":STATUS[ 'running'],
+        "ST":STATUS[ 'cancelled'],
+        "S":STATUS[ 'queued'],
+        "TO":STATUS[ 'cancelled'],
+    }
+
+    # status_codes = {'PD':STATUS['queued'], 'R':STATUS['running'], 'CA':STATUS['cancelled'],
+    #                 'CD':STATUS['complete'], 'F':STATUS['error']}
 
     with open('running.json', 'r') as f:
         running = json.load(f)
-        for job in running: lookup_by_qstat[job["qsub_id"]] = job["id"]
+        for job in running:
+            lookup_by_squeue[job["squeue_id"]] = job["id"]
 
-    # get jobs from qstat command
+    # get jobs from squeue command
     process = subprocess.run(
         # f"qstat -s prsz -u {os.environ['USER']}",
-        f'squeue --states=all --me --format "%.18i %.2t %S"',
+        f'squeue --states=all --me --format "%i %t %S"',
         shell=True,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT
     )
-    qstat_output = process.stdout.decode('utf-8').split('\n')
+    squeue_output = process.stdout.decode('utf-8').split('\n')
 
     # quit if we got no useful results
-    if len(qstat_output) <= 1: return
+    if len(squeue_output) <= 1: return
 
     # parse results
-    qstat_output = qstat_output[1:]
-    for job in qstat_output:
+    squeue_output = squeue_output[1:]
+    for job in squeue_output:
         fields = job.split()
         if len(fields) < 2: continue
 
-        qstat_id = fields[0]
-        qstat_status = fields[1]
-        if qstat_id in lookup_by_qstat:
-            status = status_codes.get(qstat_status) or STATUS['running'] # weird code? Just say still running
+        squeue_id = fields[0]
+        squeue_status = fields[1]
+        if squeue_id in lookup_by_squeue:
+            status = status_codes.get(squeue_status) or STATUS['running'] # weird code? Just say still running
             date = len(fields) >= 3 and f"{fields[2]}" or None
             if date: date = date[:10] + ' ' + date[11:]
-            set_job_status(lookup_by_qstat[qstat_id], status=status, start=date)
+            set_job_status(lookup_by_squeue[squeue_id], status=status, start=date)
 
 
 def main():

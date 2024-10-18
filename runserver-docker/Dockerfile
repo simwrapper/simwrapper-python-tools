@@ -2,11 +2,11 @@ FROM nginx:alpine
 
 # python ----------------------------------------------------------
 ENV PYTHONUNBUFFERED=1
-RUN apk add --update --no-cache python3 py3-pip && ln -sf python3 /usr/bin/python
+RUN apk add --update --no-cache python3~=3.12 py3-pip && ln -sf python3 /usr/bin/python
 RUN pip3 install --break-system-packages --no-cache --upgrade pip setuptools
 
 # Flask/Gunicorn --------------------------------------------------
-RUN pip3 install --break-system-packages --no-cache gunicorn flask flask-restful flask-reuploaded flask-cors
+RUN pip3 install --break-system-packages --no-cache gunicorn flask flask-restful flask-uploads flask-reuploaded flask-cors
 
 # nginx -----------------------------------------------------------
 RUN rm /etc/nginx/conf.d/default.conf
