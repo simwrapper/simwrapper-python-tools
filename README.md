@@ -2,39 +2,52 @@
 
 Official python library for working with SimWrapper.
 
-[SimWrapper](https://simwrapper.github.io) is a data visualization tool for exploring large transport simulation results.
+[SimWrapper](https://simwrapper.app) is a data visualization tool for exploring large transport simulation results.
 
-Web browsers all block access to your local filesystem from external websites, for obvious security reasons. The SimWrapper website needs access to model run outputs on your filesystem. This program bridges that gap: it is a command-line tool that starts a local file server in a specific folder, so that you can access the files in that folder using SimWrapper.
+Normally, web browsers block access to your local filesystem from external websites, for obvious security reasons. The SimWrapper website needs access to model run outputs on your filesystem.
+
+This python program bridges that gap: it is a command-line tool that starts a local file server in a specific folder of your choosing, so that you can access the files in that folder using SimWrapper!
 
 ## About this library
 
 This library contains the "simwrapper" command-line tool, which allows browsing of local files on your PC/laptop using the SimWrapper website.
 
-We are at the very early stages of building this tool. The API will change, things will break, and there are certainly bugs.
-
-- Our primary goal is to make it easy to get local simulation results viewable using the SimWrapper website.
-- We have only tested this using Anaconda Python. Only Python 3.x is supported.
+- Only Python 3.10+ is supported.
 
 ## Installation
 
-Installation requires the `pip` package manager.
+This package is on the PyPi pip package library. You can use pip or the more modern **uv** tool to install it. Note it has many scientific library dependencies, so it's best to use a virtual environment (via uv)
 
 - Install using `pip install simwrapper`
 - To upgrade to the latest version, `pip install --upgrade simwrapper`
 
+## Running Simwrapper locally
+
 This package includes an embedded copy of the Javascript code from the SimWrapper
-project, available separately at https://github.com/simwrapper/simwrapper. That code is under the
-identical GNU GPL V3 and is embedded here with explicit permission of the author.
+project, available separately at https://github.com/simwrapper/simwrapper. No monorepo here! Maybe someday.
 
 ## Usage
 
-`simwrapper` knows three commands.
+`simwrapper` knows four commands.
+
+**simwrapper flask**
+
+starts a _local instance of the SimWrapper website_ running on your machine and (usually) listening on port 4999. Run this command if you have a machine on your local network which contains outputs you'd like to view (such as a modeling server), and that machine has not been set up with any other file sharing software such as NGINX or Apache.
+
+- This command is designed to support the use case where an agency has (1) a local network with files stored on a central "modeling server" or file server, and also (2) desktop machines or laptops on the local network that wish to access those files using SimWrapper.
+- Ultimately you may decide that you want to put simwrapper behind a proxy server such as those listed, for improved performance, features, and security.
+
+This is especially useful if you use cloud-based storage such as AWS or Azure. You can **mount your cloud storage** to a local folder using a tool such as [Rclone mount](https://rclone.org/commands/rclone_mount/), and use this `simwrapper flask` to browse your files and results!
+
+Normally it will serve the files from the folder the command was run. See docs.simwrapper.app/docs for details on passing in a configuration file with multiple mount points.
 
 **simwrapper serve**
 
 starts a local file server in the current directory. Run this command, then browse to either <https://vsp.berlin/simwrapper> or <https://activitysim.github.io/dashboard> to view your local folder outputs.
 
 **simwrapper here**
+
+_Deprecated - use simwrapper flask instead_
 
 starts a _local copy of the SimWrapper website_ usually listening on port 8050. Run this command instead of `simwrapper serve` if you have a machine on your local network which contains outputs you'd like to view (such as a modeling server), and that machine has not been set up with any other file sharing software such as NGINX or Apache.
 
@@ -60,6 +73,8 @@ By default, almost all computers now run firewalls which block external access. 
 - SimWrapper usually runs on ports 8000 and 8050. Starting multiple copies will increment the port numbers by one each time.
 
 ## Running as HTTPS - required for Safari
+
+_We really just don't recommend using Safari. It is by far the slowest of all the browsers, and doesn't allow many advanced features because Apple wants to hold the open web back and push people to Apps_
 
 Safari blocks HTTPS websites (such as SimWrapper VSP and ASIM) which access localhost resources such as this local simwrapper file server. _We recommend Chromium-based browsers_ such as Google Chrome, Brave, and Microsoft Edge, because they are much faster than Safari. But you can run simwrapper in HTTPS mode by following these extra instructions.
 
@@ -94,6 +109,7 @@ The python `simwrapper` tool contains a fully-built static copy of the SimWrappe
 Here are the basic steps to do that:
 
 - In the SimWrapper javascript project repo:
+
   - Make any changes to the [SimWrapper javascript code](https://github.com/simwrapper/simwrapper) as needed, and test vigorously
   - Ensure that both `vite.config.js` and `public/404.html` are both set to have prefix "/" instead of "/simwrapper/" or "/dashboard/". The Python tool will not work if there is a URL prefix in the path.
   - Run `npm run build` to compile everything into the `dist` folder.
@@ -116,16 +132,16 @@ If everything is running smoothly, then push the project to pip and conda:
 - Commit the version bump, and push changes to Github
 - Push to PyPi (pip) with `make push`
 - Take note of the SHA256 string for the new `version.tar.gz` at https://pypi.org/project/simwrapper
-  which can be found on the "Download Files" page 
+  which can be found on the "Download Files" page
 
 ### Updating conda
+
+_Conda is also deprecated. Stop using Anaconda._
 
 - Modify the conda "feedstock" fork at https://github.com/simwrapper/simwrapper-feedstock :
   - Edit `recipe/meta.yaml`: you probably just need to change the version string and the SHA256
   - The SHA256 is found on https://pypi.org/project/simwrapper on the Download Files page
 - Push to Github
 - Create a pull request on https://github.com/conda-forge/simwrapper-feedstock
-  - Make notes in the PR description, checking off the relevant boxes. 
+  - Make notes in the PR description, checking off the relevant boxes.
   - You don't need to do a "rerender" unless you've changed Python versions (I think)
-
-
