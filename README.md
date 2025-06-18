@@ -30,31 +30,72 @@ project, available separately at https://github.com/simwrapper/simwrapper. No mo
 
 `simwrapper` knows four commands.
 
-**simwrapper flask**
+### simwrapper run [config.yaml]
 
-starts a _local instance of the SimWrapper website_ running on your machine and (usually) listening on port 4999. Run this command if you have a machine on your local network which contains outputs you'd like to view (such as a modeling server), and that machine has not been set up with any other file sharing software such as NGINX or Apache.
+starts a _local instance of the SimWrapper website_ running on your machine and usually listening on port 4999. Run this command if you have a machine on your local network which contains outputs you'd like to view (such as a modeling server), and that machine has not been set up with any other file sharing software such as NGINX or Apache.
 
 - This command is designed to support the use case where an agency has (1) a local network with files stored on a central "modeling server" or file server, and also (2) desktop machines or laptops on the local network that wish to access those files using SimWrapper.
 - Ultimately you may decide that you want to put simwrapper behind a proxy server such as those listed, for improved performance, features, and security.
 
-This is especially useful if you use cloud-based storage such as AWS or Azure. You can **mount your cloud storage** to a local folder using a tool such as [Rclone mount](https://rclone.org/commands/rclone_mount/), and use this `simwrapper flask` to browse your files and results!
+This is especially useful if you use cloud-based storage such as AWS or Azure. You can **mount your cloud storage** to a local folder using a tool such as [Rclone mount](https://rclone.org/commands/rclone_mount/), and use this `simwrapper run` to browse your files and results!
 
-Normally it will serve the files from the folder the command was run. See docs.simwrapper.app/docs for details on passing in a configuration file with multiple mount points.
+**Options:**
 
-**simwrapper serve**
+`simwrapper run [config-file.yaml]` will read configuration from specified file.
+
+- If not provided, simwrapper will serve the files found in the current working folder. If provided, the YAML file can provide three sections:
+
+  - **storage** - a list of mount points (folders) that simwrapper should share
+  - **tagline** - the front page tagline, default "Transport simulation data visualizer"
+  - **readme** - Markdown filename or raw markdown text to be shown on front page
+
+**Example: config.yaml:**
+
+```yaml
+# --- STORAGE ----------------------
+# **Local/network mounts only: no http URLs here**
+# Each key defines a starting point in the local filesystem.
+# (if no config is found, the current working folder is shared)
+storage:
+  data:
+    path: '/Users/billy/data'
+    description: 'Local data on my laptop'
+  vsp-public:
+    path: '/Users/billy/public-svn'
+    description: 'VSP/TU-Berlin public datasets'
+
+# --- FRONT-PAGE TEXT -------------
+# Readme can either be a .md markdown filename,
+# or you can put markdown text directly in this file with "readme: |"
+#
+tagline: 'Transport simulation data visualizer'
+readme: 'readme.md'
+# # or...
+# readme: |
+# Welcome to My SimWrapper
+# ========================
+# Markdown text here
+# - notes 1
+# - notes 2
+```
+
+---
+### simwrapper serve
 
 starts a local file server in the current directory. Run this command, then browse to either <https://vsp.berlin/simwrapper> or <https://activitysim.github.io/dashboard> to view your local folder outputs.
 
-**simwrapper here**
+---
+### simwrapper here
 
-_Deprecated - use simwrapper flask instead_
+_Deprecated - "use simwrapper run" instead_
 
 starts a _local copy of the SimWrapper website_ usually listening on port 8050. Run this command instead of `simwrapper serve` if you have a machine on your local network which contains outputs you'd like to view (such as a modeling server), and that machine has not been set up with any other file sharing software such as NGINX or Apache.
 
 - This command is designed to support the use case where an agency has (1) a local network with files stored on a central "modeling server" or file server, and also (2) desktop machines or laptops on the local network that wish to access those files using SimWrapper.
 - Note, it's not a battle-tested multi-threaded web proxy server such as Apache, NGINX, or Gunicorn. Ultimately you may decide that you want to put simwrapper behind a proxy server such as those listed, for improved performance, features, and security.
 
-**simwrapper open [vsp|asim]**
+---
+### simwrapper open [vsp|asim]
 
 opens a new web browser tab AND a local file server in the current directory. The site will only operate as long as you keep that local server running, so don't close the command window.
 
@@ -63,6 +104,8 @@ opens a new web browser tab AND a local file server in the current directory. Th
 - You can also run `simwrapper open` without specifying an external site. In this case, it will will serve everything from the localhost, including file contents and SimWrapper code itself. This is the same as `simwrapper here` except it also opens a browser tab.
 
 All three simwrapper commands start a small local file server, listening on a local port number. The site will only operate as long as you keep that local server running: quitting the command with CTRL-C or closing the command window will shut down the server.
+
+---
 
 ## Security
 
@@ -86,7 +129,7 @@ This requires Homebrew, which supplies the `brew` command.
 brew install mkcert nss   # installs mkcert command
 mkcert localhost          # Create PEM key/cert files for "localhost"
 mkcert -install           # Installs certificates in browser
-```
+````
 
 This creates two files: `localhost.pem` and `localhost-key.pem`. Move them somewhere where you cn find them.
 
