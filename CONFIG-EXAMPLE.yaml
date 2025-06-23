@@ -9,21 +9,14 @@
 # (if no config is found, the current working folder is shared)
 storage:
   data:
-    path: '/Users/billy/data'
-    description: 'Local data on my laptop'
-  vsp-public:
-    path: '/Users/billy/public-svn'
-    description: 'VSP/TU-Berlin public datasets'
+    path: '/data'
+    description: 'Local data from this server'
 
 # --- FRONT-PAGE TEXT -------------
+tagline: 'Transport simulation data visualizer'
 # Optional readme can be either a .md markdown filename,
 # or you can put markdown text directly in this file with "readme: |"
-tagline: 'Transport simulation data visualizer'
-readme: 'readme.md'
-# # or
 # readme: |
-#   Welcome to My SimWrapper
+#   Welcome to SimWrapper on Docker
 #   ========================
-#   Markdown text here
-#   - notes 1
-#   - notes 2
+#   - This is running inside a container. Edit CONFIG-DOCKER.yaml to remove this message!

@@ -12,19 +12,19 @@ This python program bridges that gap: it is a command-line tool that starts a lo
 
 This library contains the "simwrapper" command-line tool, which allows browsing of local files on your PC/laptop using the SimWrapper website.
 
-- Python 3.11+ is supported.
+- Only Python 3.10+ is supported.
 
 ## Installation
 
 This package is on the PyPi pip package library. You can use pip or the more modern **uv** tool to install it. Note it has many scientific library dependencies, so it's best to use a virtual environment (via uv)
 
-- Pip: install using `pip install simwrapper`
-  - To upgrade to the latest version, `pip install --upgrade simwrapper`
-- uv: install using 'uv add simwrapper'
+- Install using `pip install simwrapper`
+- To upgrade to the latest version, `pip install --upgrade simwrapper`
 
 ## Running Simwrapper locally
 
-This package includes an embedded copy of the Javascript code from the SimWrapper project, available separately at https://github.com/simwrapper/simwrapper.
+This package includes an embedded copy of the Javascript code from the SimWrapper
+project, available separately at https://github.com/simwrapper/simwrapper. No monorepo here! Maybe someday.
 
 ## Usage
 
@@ -80,13 +80,11 @@ readme: 'readme.md'
 ```
 
 ---
-
 ### simwrapper serve
 
 starts a local file server in the current directory. Run this command, then browse to either <https://vsp.berlin/simwrapper> or <https://activitysim.github.io/dashboard> to view your local folder outputs.
 
 ---
-
 ### simwrapper here
 
 _Deprecated - "use simwrapper run" instead_
@@ -97,7 +95,6 @@ starts a _local copy of the SimWrapper website_ usually listening on port 8050. 
 - Note, it's not a battle-tested multi-threaded web proxy server such as Apache, NGINX, or Gunicorn. Ultimately you may decide that you want to put simwrapper behind a proxy server such as those listed, for improved performance, features, and security.
 
 ---
-
 ### simwrapper open [vsp|asim]
 
 opens a new web browser tab AND a local file server in the current directory. The site will only operate as long as you keep that local server running, so don't close the command window.
@@ -132,7 +129,7 @@ This requires Homebrew, which supplies the `brew` command.
 brew install mkcert nss   # installs mkcert command
 mkcert localhost          # Create PEM key/cert files for "localhost"
 mkcert -install           # Installs certificates in browser
-```
+````
 
 This creates two files: `localhost.pem` and `localhost-key.pem`. Move them somewhere where you cn find them.
 
@@ -191,18 +188,3 @@ _Conda is also deprecated. Stop using Anaconda._
 - Create a pull request on https://github.com/conda-forge/simwrapper-feedstock
   - Make notes in the PR description, checking off the relevant boxes.
   - You don't need to do a "rerender" unless you've changed Python versions (I think)
-
-## Docker image
-
-There is also a Dockerfile for building the docker image at simwrapper/app
-
-Various build commands for building x86/amd64 images on Mac M1. Builds are slower this way but docker hub expects amd64 images.
-
-- `brew install colima docker lima-additional-guestagents`
-- `colima start --arch x86_64 --cpu 2 --memory 4 --disk 60`
-
-Then you can build, run, and eventually push with
-
-- `docker build -t simwrapper/app .`
-- `docker run -p 4999:4999 simwrapper/app`
-- `docker push simwrapper/app:[tag]`
