@@ -1,7 +1,7 @@
 # config-example.yaml
+# ------------------------------------------------
 # This file defines storage locations and any
 # front-page "readme" material in markdown
-# ------------------------------------------------
 
 # --- STORAGE ----------------------
 # **Local/network mounts only: no http URLs here**
@@ -16,11 +16,10 @@ storage:
     description: 'VSP/TU-Berlin public datasets'
 
 # --- FRONT-PAGE TEXT -------------
-# Readme can either be a .md markdown filename,
+# Optional readme can be either a .md markdown filename,
 # or you can put markdown text directly in this file with "readme: |"
-#
 tagline: 'Transport simulation data visualizer'
-# readme: 'readme.md'
+readme: 'readme.md'
 # # or
 # readme: |
 #   Welcome to My SimWrapper
@@ -28,4 +27,3 @@ tagline: 'Transport simulation data visualizer'
 #   Markdown text here
 #   - notes 1
 #   - notes 2
-
