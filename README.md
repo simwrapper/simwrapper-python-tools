@@ -12,7 +12,7 @@ This python program bridges that gap: it is a command-line tool that starts a lo
 
 This library contains the "simwrapper" command-line tool, which allows browsing of local files on your PC/laptop using the SimWrapper website.
 
-- Python 3.11+ is supported.
+- Python 3.9+ is supported.
 
 ## Installation
 
