@@ -28,7 +28,7 @@ This package includes an embedded copy of the Javascript code from the SimWrappe
 
 ## Usage
 
-`simwrapper` knows four commands.
+`simwrapper` knows four commands. "run" is the most common command and likely the only one you need.
 
 ### simwrapper run [config.yaml]
 
@@ -43,9 +43,10 @@ This is especially useful if you use cloud-based storage such as AWS or Azure. Y
 
 `simwrapper run [config-file.yaml]` will read configuration from specified file.
 
-- If not provided, simwrapper will serve the files found in the current working folder. If provided, the YAML file can provide three sections:
+- If not provided, simwrapper will serve the files found in the current working folder. If provided, the YAML file can provide four sections:
 
-  - **storage** - a list of mount points (folders) that simwrapper should share
+  - **storage** - a set of mount points (folders) that simwrapper should share
+  - **zones** - a set of zonal boundary GeoJSON files that are automatically used for matrix views
   - **tagline** - the front page tagline, default "Transport simulation data visualizer"
   - **readme** - Markdown filename or raw markdown text to be shown on front page
 
@@ -63,6 +64,16 @@ storage:
   vsp-public:
     path: '/Users/billy/public-svn'
     description: 'VSP/TU-Berlin public datasets'
+
+
+# --- ZONAL DEFINITIONS ------------
+# GeoJSON files and matrix sizes that go with them
+zones:
+  my-region-tazs:
+    file: "C:/geo/shapes/zonal-boundaries-1455-zones.geojson"
+    lookup: "ID" # the column/property containing the zone number
+    sizes: 1455,2055 # comma-separated list of matrix sizes that use this zone system
+
 
 # --- FRONT-PAGE TEXT -------------
 # Readme can either be a .md markdown filename,
