@@ -18,9 +18,9 @@ This library contains the "simwrapper" command-line tool, which allows browsing 
 
 This package is on the PyPi pip package library. You can use pip or the more modern **uv** tool to install it. Note it has many scientific library dependencies, so it's best to use a virtual environment (via uv)
 
+- uv: install using 'uv tool install simwrapper'
 - Pip: install using `pip install simwrapper`
   - To upgrade to the latest version, `pip install --upgrade simwrapper`
-- uv: install using 'uv add simwrapper'
 
 ## Running Simwrapper locally
 
@@ -65,15 +65,13 @@ storage:
     path: '/Users/billy/public-svn'
     description: 'VSP/TU-Berlin public datasets'
 
-
 # --- ZONAL DEFINITIONS ------------
 # GeoJSON files and matrix sizes that go with them
 zones:
   my-region-tazs:
-    file: "C:/geo/shapes/zonal-boundaries-1455-zones.geojson"
-    lookup: "ID" # the column/property containing the zone number
+    file: 'C:/geo/shapes/zonal-boundaries-1455-zones.geojson'
+    lookup: 'ID' # the column/property containing the zone number
     sizes: 1455,2055 # comma-separated list of matrix sizes that use this zone system
-
 
 # --- FRONT-PAGE TEXT -------------
 # Readme can either be a .md markdown filename,
